@@ -22,9 +22,6 @@ ThinkInk_290_Grayscale4_T5 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY)
 #define COLOR1 EPD_BLACK
 #define COLOR2 EPD_LIGHT
 #define COLOR3 EPD_DARK
-// WiFi network name and password:
-const char * networkName = "Holodeck3-2.4";
-const char * networkPswd = "rikerprogram1";
 
 const char* mbta_cert = \
 "-----BEGIN CERTIFICATE-----\n" \
