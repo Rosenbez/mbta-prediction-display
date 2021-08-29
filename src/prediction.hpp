@@ -1,3 +1,4 @@
+#pragma once
 #include <Arduino.h>
 /* 
 example of the data layout

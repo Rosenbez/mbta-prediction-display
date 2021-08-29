@@ -10,6 +10,9 @@
 #include "prediction.hpp"
 #include "wifi_storage.hpp"
 
+bool wifiChanged = false;
+#include "mbta_bluetooth.hpp"
+
 #define EPD_DC 33    // A9can be any pin, but required!
 #define EPD_CS 15    // A8 can be any pin, but required!
 #define EPD_BUSY -1  // can set to -1 to not use a pin (will wait a fixed delay)
@@ -304,6 +307,18 @@ void PrepDisplay()
     display.setTextWrap(true);
 }
 
+void testBLE()
+{
+    Serial.println("testing ble system");
+    BLEDevice::init("esp32");
+    auto ble = BleSystem();
+    ble.startServer();
+    
+    while(!wifiChanged){
+        delay(40);
+    }
+}
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -318,9 +333,12 @@ void setup()
 
     auto wifistore = WifiCredentialStore();
     //wifistore.storeCredentials(networkName, networkPswd);
-    auto creds = wifistore.getCredentials();
 
+    testBLE();
+
+    auto creds = wifistore.getCredentials();
     connectToWiFi(creds.ssid, creds.pass);
+
 
     //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
