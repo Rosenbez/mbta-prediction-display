@@ -10,6 +10,10 @@
 #include "prediction.hpp"
 #include "wifi_storage.hpp"
 
+bool wifiChanged = false;
+#include "mbta_bluetooth.hpp"
+#include "display_handle.hpp"
+
 #define EPD_DC 33    // A9can be any pin, but required!
 #define EPD_CS 15    // A8 can be any pin, but required!
 #define EPD_BUSY -1  // can set to -1 to not use a pin (will wait a fixed delay)
@@ -62,57 +66,17 @@ const int daylightOffset_sec = 3600;
 struct tm timeinfo;
 long StartTime;
 
+struct PredictionPack {
+    StopPrediction predictions[15];
+    int num_predictions;
+};
+
 void print_heap()
 {
     Serial.printf("Free heap: %u  \n", esp_get_free_heap_size() / 1000);
 }
 
-void ScreenInit()
-{
-    display.clearBuffer();
-    display.setTextSize(2);
-    display.setCursor(5, 50);
-    display.setTextColor(COLOR1);
-    display.setTextWrap(true);
-    display.print("System Booting");
-    display.display();
-}
-
-void write_predictions(StopPrediction predictions[], int num_predictions)
-{
-    // Write an array of predictions to the screen
-    int line_number = 0;
-    for (int s = 0; s <= num_predictions; s++)
-    {
-        auto pred = predictions[s];
-        Serial.print("Writing prediction to screen");
-        int cursor_pos_y = 16 * (line_number + 1);
-        display.setCursor(1, cursor_pos_y);
-        //Serial.printf("set curser to y: %d \n", cursor_pos_y);
-        //Serial.println("write string to screen buff");
-        int arriving_in = pred.get_countdown_min(timeinfo);
-        //Serial.printf("On print object %d \n", s);
-        if (arriving_in < 0)
-        {
-            continue;
-        }
-        if (line_number > 6)
-        {
-            break;
-        }
-        if (strcmp(pred.via(), "0") == 0)
-        {
-            display.printf("Bus: %s %d Min", pred.route(), arriving_in);
-        }
-        else
-        {
-            display.printf("Bus: %s %d Min v %s", pred.route(), arriving_in, pred.via());
-        }
-        line_number++;
-    }
-}
-
-void parse_and_display(String &payload)
+PredictionPack parse_prediction_string(String &payload)
 {
     print_heap();
     DynamicJsonDocument doc(6144);
@@ -132,6 +96,8 @@ void parse_and_display(String &payload)
     StopPrediction predictions[15];
     int num_predictions = 0;
     display.setTextSize(2);
+    
+    PredictionPack prediction_pack;
 
     for (JsonObject elem : doc["data"].as<JsonArray>())
     {
@@ -151,12 +117,14 @@ void parse_and_display(String &payload)
         {
             predictions[i].set_via("Elm");
         }
+        prediction_pack.predictions[i] = predictions[i];
         i++;
         Serial.printf("Adding prediction %d \n", i);
         num_predictions++;
     };
     i = 0;
-    write_predictions(predictions, num_predictions);
+    prediction_pack.num_predictions = num_predictions;
+    return prediction_pack;
 }
 
 String get_mbta_prediction_json(int stop)
@@ -254,13 +222,12 @@ void connectToWiFi(const char *ssid, const char *pwd)
     }
 }
 
-void read_batt(char *fill_batt)
+float get_battery_percentage()
 {
     float voltage = analogRead(A13) * 2 * (3.3 / 4096);
     float pct = map(voltage * 1000, 2900, 4000, 0.0, 100.0);
-    Serial.printf("Bat voltage: %4.2f pct", voltage);
-    sprintf(fill_batt, "Batt Voltage: %2.0f %%", pct);
-    Serial.println();
+    Serial.printf("Bat voltage: %4.2f pct", pct);
+    return pct;
 }
 
 void wifi_off()
@@ -284,24 +251,16 @@ void BeginSleep()
     esp_deep_sleep_start(); // Sleep for e.g. 30 minutes
 }
 
-void WriteBanner()
+void testBLE()
 {
-    char batt_str[30];
-    read_batt(batt_str);
-    display.print(batt_str);
-    printLocalTime();
-    display.setCursor(150, 1);
-    display.print(&timeinfo, "%B %d %Y %H:%M");
-    display.drawFastHLine(0, 14, display.width(), COLOR1);
-}
-
-void PrepDisplay()
-{
-    display.clearBuffer();
-    display.setTextSize(1);
-    display.setCursor(0, 1);
-    display.setTextColor(COLOR1);
-    display.setTextWrap(true);
+    Serial.println("testing ble system");
+    BLEDevice::init("esp32");
+    auto ble = BleSystem();
+    ble.startServer();
+    
+    while(!wifiChanged){
+        delay(40);
+    }
 }
 
 void setup()
@@ -318,24 +277,29 @@ void setup()
 
     auto wifistore = WifiCredentialStore();
     //wifistore.storeCredentials(networkName, networkPswd);
-    auto creds = wifistore.getCredentials();
 
+    //testBLE();
+
+    auto creds = wifistore.getCredentials();
     connectToWiFi(creds.ssid, creds.pass);
+
 
     //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     printLocalTime();
-    //display.begin(THINKINK_GRAYSCALE4);
-    display.begin(THINKINK_MONO);
 
-    // put your main code here, to run repeatedly:
+    DisplayHandle mbta_display = DisplayHandle(&display, &timeinfo);
 
-    PrepDisplay();
-    WriteBanner();
+    mbta_display.PrepDisplay();
+
+    float batt = get_battery_percentage();
+    mbta_display.WriteBanner(batt);
+
     String mbta_data = get_mbta_prediction_json(2579);
+    auto prediction_pack = parse_prediction_string(mbta_data);
 
-    parse_and_display(mbta_data);
-    display.display();
+    mbta_display.write_predictions(prediction_pack.predictions, prediction_pack.num_predictions);
+    mbta_display.display_data();
     wifi_off();
     BeginSleep();
     sleep(60);

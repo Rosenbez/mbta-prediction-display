@@ -1,3 +1,4 @@
+#pragma once
 #include <Preferences.h>
 
 struct wifiCreds {
@@ -14,8 +15,22 @@ private:
 public:
     void storeCredentials(const char* ssid, const char* password) {
         Serial.printf("storing wifi credentials: %s, %s \n", ssid, password);
-        flashStorage.begin(storageNamespace );
+        flashStorage.begin(storageNamespace);
         flashStorage.putString(ssidKey, ssid);
+        flashStorage.putString(passwdKey, password);
+        flashStorage.end();
+    }
+
+    void storeSSID(const char* ssid)
+    {
+        flashStorage.begin(storageNamespace);
+        flashStorage.putString(ssidKey, ssid);
+        flashStorage.end();
+    }
+
+    void storePass(const char* password)
+    {
+        flashStorage.begin(storageNamespace);
         flashStorage.putString(passwdKey, password);
         flashStorage.end();
     }
