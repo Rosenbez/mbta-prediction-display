@@ -24,10 +24,6 @@ bool wifiChanged = false;
 // 2.9" Grayscale Featherwing or Breakout:
 ThinkInk_290_Grayscale4_T5 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
 
-#define COLOR1 EPD_BLACK
-#define COLOR2 EPD_LIGHT
-#define COLOR3 EPD_DARK
-
 //Are we currently connected?
 bool connected = false;
 
@@ -140,6 +136,20 @@ void testBLE()
     }
 }
 
+// Create display handle and display the predictions
+void write_predictions_to_display(PredictionPack prediction_pack)
+{
+    DisplayHandle mbta_display = DisplayHandle(&display, &timeinfo);
+
+    mbta_display.PrepDisplay();
+
+    float batt = get_battery_percentage();
+    mbta_display.WriteBanner(batt);
+
+    mbta_display.write_predictions(prediction_pack.predictions, prediction_pack.num_predictions);
+    mbta_display.display_data();
+}
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -168,15 +178,7 @@ void setup()
     
     auto prediction_pack = mbta.get_predictions(2579);
 
-    DisplayHandle mbta_display = DisplayHandle(&display, &timeinfo);
-
-    mbta_display.PrepDisplay();
-
-    float batt = get_battery_percentage();
-    mbta_display.WriteBanner(batt);
-
-    mbta_display.write_predictions(prediction_pack.predictions, prediction_pack.num_predictions);
-    mbta_display.display_data();
+    write_predictions_to_display(prediction_pack);
 
     wifi_off();
     BeginSleep();

@@ -133,7 +133,7 @@ private:
 
         const char *route_num = relationships["route"]["data"]["id"]; // "87", "88"
         const char *stop_id = relationships["stop"]["data"]["id"];    // "2579",
-        const char *trip_id = relationships["trip"]["data"]["id"];
+        // const char *trip_id = relationships["trip"]["data"]["id"];
         auto prediction = StopPrediction(route_num, stop_id, arrival_time);
         if (strcmp(route_num, "88") == 0)
         {
