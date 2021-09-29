@@ -9,6 +9,7 @@
 #include <ArduinoJson.h>
 #include "prediction.hpp"
 #include "wifi_storage.hpp"
+#include "mbta_api.hpp"
 
 bool wifiChanged = false;
 #include "mbta_bluetooth.hpp"
@@ -23,41 +24,9 @@ bool wifiChanged = false;
 // 2.9" Grayscale Featherwing or Breakout:
 ThinkInk_290_Grayscale4_T5 display(EPD_DC, EPD_RESET, EPD_CS, SRAM_CS, EPD_BUSY);
 
-#define COLOR1 EPD_BLACK
-#define COLOR2 EPD_LIGHT
-#define COLOR3 EPD_DARK
-
-const char *mbta_cert =
-    "-----BEGIN CERTIFICATE-----\n"
-    "MIIEdTCCA12gAwIBAgIJAKcOSkw0grd/MA0GCSqGSIb3DQEBCwUAMGgxCzAJBgNV\n"
-    "BAYTAlVTMSUwIwYDVQQKExxTdGFyZmllbGQgVGVjaG5vbG9naWVzLCBJbmMuMTIw\n"
-    "MAYDVQQLEylTdGFyZmllbGQgQ2xhc3MgMiBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0\n"
-    "eTAeFw0wOTA5MDIwMDAwMDBaFw0zNDA2MjgxNzM5MTZaMIGYMQswCQYDVQQGEwJV\n"
-    "UzEQMA4GA1UECBMHQXJpem9uYTETMBEGA1UEBxMKU2NvdHRzZGFsZTElMCMGA1UE\n"
-    "ChMcU3RhcmZpZWxkIFRlY2hub2xvZ2llcywgSW5jLjE7MDkGA1UEAxMyU3RhcmZp\n"
-    "ZWxkIFNlcnZpY2VzIFJvb3QgQ2VydGlmaWNhdGUgQXV0aG9yaXR5IC0gRzIwggEi\n"
-    "MA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDVDDrEKvlO4vW+GZdfjohTsR8/\n"
-    "y8+fIBNtKTrID30892t2OGPZNmCom15cAICyL1l/9of5JUOG52kbUpqQ4XHj2C0N\n"
-    "Tm/2yEnZtvMaVq4rtnQU68/7JuMauh2WLmo7WJSJR1b/JaCTcFOD2oR0FMNnngRo\n"
-    "Ot+OQFodSk7PQ5E751bWAHDLUu57fa4657wx+UX2wmDPE1kCK4DMNEffud6QZW0C\n"
-    "zyyRpqbn3oUYSXxmTqM6bam17jQuug0DuDPfR+uxa40l2ZvOgdFFRjKWcIfeAg5J\n"
-    "Q4W2bHO7ZOphQazJ1FTfhy/HIrImzJ9ZVGif/L4qL8RVHHVAYBeFAlU5i38FAgMB\n"
-    "AAGjgfAwge0wDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYwHQYDVR0O\n"
-    "BBYEFJxfAN+qAdcwKziIorhtSpzyEZGDMB8GA1UdIwQYMBaAFL9ft9HO3R+G9FtV\n"
-    "rNzXEMIOqYjnME8GCCsGAQUFBwEBBEMwQTAcBggrBgEFBQcwAYYQaHR0cDovL28u\n"
-    "c3MyLnVzLzAhBggrBgEFBQcwAoYVaHR0cDovL3guc3MyLnVzL3guY2VyMCYGA1Ud\n"
-    "HwQfMB0wG6AZoBeGFWh0dHA6Ly9zLnNzMi51cy9yLmNybDARBgNVHSAECjAIMAYG\n"
-    "BFUdIAAwDQYJKoZIhvcNAQELBQADggEBACMd44pXyn3pF3lM8R5V/cxTbj5HD9/G\n"
-    "VfKyBDbtgB9TxF00KGu+x1X8Z+rLP3+QsjPNG1gQggL4+C/1E2DUBc7xgQjB3ad1\n"
-    "l08YuW3e95ORCLp+QCztweq7dp4zBncdDQh/U90bZKuCJ/Fp1U1ervShw3WnWEQt\n"
-    "8jxwmKy6abaVd38PMV4s/KCHOkdp8Hlf9BRUpJVeEXgSYCfOn8J3/yNTd126/+pZ\n"
-    "59vPr5KW7ySaNRB6nJHGDn2Z9j8Z3/VyVOEVqQdZe4O/Ui5GjLIAZHYcSNPYeehu\n"
-    "VsyuLAOQ1xk4meTKCRlb/weWsKh/NEnfVqn3sF/tM+2MR7cwA130A4w=\n"
-    "-----END CERTIFICATE-----\n";
-
+//Are we currently connected?
 bool connected = false;
 
-//Are we currently connected?
 float voltage;
 
 const char *ntpServer = "pool.ntp.org";
@@ -66,105 +35,9 @@ const int daylightOffset_sec = 3600;
 struct tm timeinfo;
 long StartTime;
 
-struct PredictionPack {
-    StopPrediction predictions[15];
-    int num_predictions;
-};
-
 void print_heap()
 {
     Serial.printf("Free heap: %u  \n", esp_get_free_heap_size() / 1000);
-}
-
-PredictionPack parse_prediction_string(String &payload)
-{
-    print_heap();
-    DynamicJsonDocument doc(6144);
-    Serial.println("allocated json");
-    print_heap();
-
-    DeserializationError error = deserializeJson(doc, payload);
-
-    if (error)
-    {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.f_str());
-    }
-    Serial.println();
-    //serializeJsonPretty(doc, Serial);
-    int i = 0;
-    StopPrediction predictions[15];
-    int num_predictions = 0;
-    display.setTextSize(2);
-    
-    PredictionPack prediction_pack;
-
-    for (JsonObject elem : doc["data"].as<JsonArray>())
-    {
-
-        JsonObject attributes = elem["attributes"];
-        const char *arrival_time = attributes["arrival_time"]; // "2021-03-07T09:30:51-05:00",
-        JsonObject relationships = elem["relationships"];
-
-        const char *route_num = relationships["route"]["data"]["id"]; // "87", "88"
-        const char *stop_id = relationships["stop"]["data"]["id"];    // "2579",
-        predictions[i] = StopPrediction(route_num, stop_id, arrival_time);
-        if (strcmp(route_num, "88") == 0)
-        {
-            predictions[i].set_via("Highlnd");
-        }
-        else if (strcmp(route_num, "87") == 0)
-        {
-            predictions[i].set_via("Elm");
-        }
-        prediction_pack.predictions[i] = predictions[i];
-        i++;
-        Serial.printf("Adding prediction %d \n", i);
-        num_predictions++;
-    };
-    i = 0;
-    prediction_pack.num_predictions = num_predictions;
-    return prediction_pack;
-}
-
-String get_mbta_prediction_json(int stop)
-{
-    while (!connected)
-    {
-        sleep(1);
-    }
-    HTTPClient http;
-
-    Serial.print("[HTTP] begin...\n");
-    String mbta_query_url = "https://api-v3.mbta.com/predictions?filter[stop]=";
-    mbta_query_url += stop;
-    http.begin(mbta_query_url, mbta_cert); //HTTP
-
-    Serial.print("[HTTP] GET...\n");
-    // start connection and send HTTP header
-    int httpCode = http.GET();
-    String payload;
-
-    // httpCode will be negative on error
-    if (httpCode > 0)
-    {
-        // HTTP header has been send and Server response header has been handled
-        Serial.printf("[HTTP] GET... code: %d\n", httpCode);
-
-        // file found at server
-        if (httpCode == HTTP_CODE_OK)
-        {
-            payload = http.getString();
-        }
-    }
-    else
-    {
-        Serial.printf("[HTTP] GET... failed, error: %s\n", http.errorToString(httpCode).c_str());
-        Serial.println(http.getString());
-        payload = "HTTP Error";
-    }
-    http.end();
-    return payload;
 }
 
 void printLocalTime()
@@ -263,6 +136,20 @@ void testBLE()
     }
 }
 
+// Create display handle and display the predictions
+void write_predictions_to_display(PredictionPack prediction_pack)
+{
+    DisplayHandle mbta_display = DisplayHandle(&display, &timeinfo);
+
+    mbta_display.PrepDisplay();
+
+    float batt = get_battery_percentage();
+    mbta_display.WriteBanner(batt);
+
+    mbta_display.write_predictions(prediction_pack.predictions, prediction_pack.num_predictions);
+    mbta_display.display_data();
+}
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -283,26 +170,18 @@ void setup()
     auto creds = wifistore.getCredentials();
     connectToWiFi(creds.ssid, creds.pass);
 
-
     //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     printLocalTime();
 
-    DisplayHandle mbta_display = DisplayHandle(&display, &timeinfo);
+    MbtaApi mbta = MbtaApi();
+    
+    auto prediction_pack = mbta.get_predictions(2579);
 
-    mbta_display.PrepDisplay();
+    write_predictions_to_display(prediction_pack);
 
-    float batt = get_battery_percentage();
-    mbta_display.WriteBanner(batt);
-
-    String mbta_data = get_mbta_prediction_json(2579);
-    auto prediction_pack = parse_prediction_string(mbta_data);
-
-    mbta_display.write_predictions(prediction_pack.predictions, prediction_pack.num_predictions);
-    mbta_display.display_data();
     wifi_off();
     BeginSleep();
-    sleep(60);
 }
 
 void loop()

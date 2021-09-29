@@ -17,6 +17,8 @@ data : [
    'type': 'prediction'},
    ]
 */
+
+
 class StopPrediction
 {
 private:
@@ -44,4 +46,14 @@ public:
         return arriving_in;
     }
     void set_via(const char *via) { _via = via; }
+
+    bool hasVia()
+    {
+        return !strcmp(_via, "0") == 0;
+    }
+};
+
+struct PredictionPack {
+    StopPrediction predictions[15];
+    int num_predictions;
 };
