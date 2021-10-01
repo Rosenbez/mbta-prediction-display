@@ -109,6 +109,19 @@ void wifi_off()
     WiFi.disconnect(true);
 }
 
+bool get_button_c_pressed(int button=13)
+{
+    pinMode(button, PULLUP);
+    delay(50);
+
+    int pressed = digitalRead(button);
+    
+    Serial.println("Button pressed!!!");
+    Serial.printf("Button int: %d \n", pressed);
+    return (pressed == 0);
+
+}
+
 void BeginSleep()
 {
     // Function for deep sleep power savings - not implimented yet.
@@ -130,8 +143,9 @@ void testBLE()
     BLEDevice::init("esp32");
     auto ble = BleSystem();
     ble.startServer();
+    delay(200);
     
-    while(!wifiChanged){
+    while(!get_button_c_pressed()){
         delay(40);
     }
 }
@@ -150,6 +164,20 @@ void write_predictions_to_display(PredictionPack prediction_pack)
     mbta_display.display_data();
 }
 
+void run_bluetooth_mode()
+{
+    Serial.println("engaging BT display");
+    auto disp = DisplayHandle(&display, &timeinfo);
+    disp.PrepDisplay();
+    float batt = get_battery_percentage();
+    disp.WriteBanner(batt);
+    disp.write_bt_screen();
+    disp.display_data();
+    delay(2000);
+    testBLE();
+
+}
+
 void setup()
 {
     // put your setup code here, to run once:
@@ -165,10 +193,15 @@ void setup()
     auto wifistore = WifiCredentialStore();
     //wifistore.storeCredentials(networkName, networkPswd);
 
-    //testBLE();
+    bool button_c = get_button_c_pressed();
+    if (button_c)
+    {
+        run_bluetooth_mode();
+    }
 
     auto creds = wifistore.getCredentials();
     connectToWiFi(creds.ssid, creds.pass);
+
 
     //init and get the time
     configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);

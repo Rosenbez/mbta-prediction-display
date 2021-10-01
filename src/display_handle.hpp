@@ -57,10 +57,29 @@ public:
         }
     }
 
+    void write_bt_screen()
+    {
+        setCursor(2);
+        display->setTextSize(2);
+        display->print("Bluetooth Mode started -  Press button C to exit");
+    }
+
     // Display current data in the buffer to the screen.
     void display_data()
     {
         display->display();
+    }
+
+    void setCursor(int current_line)
+    {
+        int cursor_pos_y = 16 * (current_line + 1);
+        display->setCursor(1, cursor_pos_y);
+        //Serial.printf("set curser to y: %d \n", cursor_pos_y);
+    }
+
+    void write_line(char* line)
+    {
+        display->print(line);
     }
 
 private:
@@ -73,14 +92,7 @@ private:
         Serial.println();
     }
 
-    void setCursor(int current_line)
-    {
-        int cursor_pos_y = 16 * (current_line + 1);
-        display->setCursor(1, cursor_pos_y);
-        //Serial.printf("set curser to y: %d \n", cursor_pos_y);
-    }
-
-    // Write a prediction line at the current cursor position.
+        // Write a prediction line at the current cursor position.
     void write_single_prediction(StopPrediction pred, int arriving_in)
     {
         if (pred.hasVia())
@@ -92,4 +104,6 @@ private:
             display->printf("Bus: %s %d Min", pred.route(), arriving_in);
         }
     }
+
+
 };
