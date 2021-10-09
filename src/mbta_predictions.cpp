@@ -95,7 +95,7 @@ void connectToWiFi(const char *ssid, const char *pwd)
     }
 }
 
-float get_battery_percentage()
+float getBatteryPercentage()
 {
     float voltage = analogRead(A13) * 2 * (3.3 / 4096);
     float pct = map(voltage * 1000, 2900, 4000, 0.0, 100.0);
@@ -109,12 +109,12 @@ void wifi_off()
     WiFi.disconnect(true);
 }
 
-bool get_button_c_pressed(int button=13)
+bool ButtonCIsPressed(int button_pin_number=13)
 {
-    pinMode(button, PULLUP);
+    pinMode(button_pin_number, PULLUP);
     delay(50);
 
-    int pressed = digitalRead(button);
+    int pressed = digitalRead(button_pin_number);
     
     Serial.println("Button pressed!!!");
     Serial.printf("Button int: %d \n", pressed);
@@ -124,11 +124,11 @@ bool get_button_c_pressed(int button=13)
 
 void BeginSleep()
 {
-    // Function for deep sleep power savings - not implimented yet.
-    long SleepDuration = 60;                               // Sleep time in seconds, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
-                                                           // int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
-                                                           // int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
-    long SleepTimer = (SleepDuration);                     //Some ESP32 are too fast to maintain accurate time
+    // Function for deep sleep power savings
+    long SleepDuration = 60;  // Sleep time in seconds, aligned to the nearest minute boundary, so if 30 will always update at 00 or 30 past the hour
+    // int  WakeupTime    = 7;  // Don't wakeup until after 07:00 to save battery power
+    // int  SleepTime     = 23; // Sleep after (23+1) 00:00 to save battery power
+    long SleepTimer = (SleepDuration);  //Some ESP32 are too fast to maintain accurate time
     esp_sleep_enable_timer_wakeup((SleepTimer)*1000000LL); // Added +20 seconnds to cover ESP32 RTC timer source inaccuracies
 
     Serial.println("Entering " + String(SleepTimer) + "-secs of sleep time");
@@ -137,7 +137,8 @@ void BeginSleep()
     esp_deep_sleep_start(); // Sleep for e.g. 30 minutes
 }
 
-void testBLE()
+// Start the bluetooth system to update the wifi creds or bus stop number.
+void runBLE()
 {
     Serial.println("testing ble system");
     BLEDevice::init("esp32");
@@ -145,36 +146,37 @@ void testBLE()
     ble.startServer();
     delay(200);
     
-    while(!get_button_c_pressed()){
+    while(!ButtonCIsPressed()){
         delay(40);
     }
 }
 
 // Create display handle and display the predictions
-void write_predictions_to_display(PredictionPack prediction_pack)
+void writePredictionsToDisplay(PredictionPack prediction_pack)
 {
     DisplayHandle mbta_display = DisplayHandle(&display, &timeinfo);
 
     mbta_display.PrepDisplay();
 
-    float batt = get_battery_percentage();
+    float batt = getBatteryPercentage();
     mbta_display.WriteBanner(batt);
 
     mbta_display.writePredictions(prediction_pack.predictions, prediction_pack.num_predictions);
     mbta_display.displayData();
 }
 
-void run_bluetooth_mode()
+// Display the bluetooth screen, and turn on BLE.
+void runBluetoothMode()
 {
     Serial.println("engaging BT display");
     auto disp = DisplayHandle(&display, &timeinfo);
     disp.PrepDisplay();
-    float batt = get_battery_percentage();
+    float batt = getBatteryPercentage();
     disp.WriteBanner(batt);
     disp.writeBleScreen();
     disp.displayData();
     delay(2000);
-    testBLE();
+    runBLE();
 
 }
 
@@ -194,10 +196,10 @@ void setup()
     //wifistore.storeCredentials(networkName, networkPswd);
     //wifistore.storeStop(2579);
 
-    bool button_c = get_button_c_pressed();
+    bool button_c = ButtonCIsPressed();
     if (button_c)
     {
-        run_bluetooth_mode();
+        runBluetoothMode();
     }
 
     auto creds = wifistore.getCredentials();
@@ -212,7 +214,7 @@ void setup()
     
     auto prediction_pack = mbta.getPredictions(creds.mbtaStop);
 
-    write_predictions_to_display(prediction_pack);
+    writePredictionsToDisplay(prediction_pack);
 
     wifi_off();
     BeginSleep();
