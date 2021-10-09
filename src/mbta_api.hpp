@@ -139,6 +139,7 @@ private:
         return prediction;
     }
 
+    // Adds a "via" string to the prediction based upon the route number.
     void addViaToRoute(StopPrediction &prediction, const char* route_num)
     {
         if (strcmp(route_num, "88") == 0)
