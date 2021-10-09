@@ -1,7 +1,7 @@
 # MBTA Prediction Display
 A wireless, battery powered, E-Ink arrival display for your local MBTA Stop.
 
-![Bus Display](https://github.com/Rosenbez/mbta-prediction-display/blob/feature/readme-picture-update/resources/images/bus-diplay-side.jpg)
+![Bus Display](https://github.com/Rosenbez/mbta-prediction-display/blob/main/resources/images/bus-diplay-side.jpg)
 
 
 ## Features
