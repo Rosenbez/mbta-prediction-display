@@ -44,20 +44,20 @@ public:
 
     MbtaApi() {}
 
-    PredictionPack get_predictions(int mbta_stop_number)
+    PredictionPack getPredictions(int mbta_stop_number)
     {
-        String prediction_json = get_mbta_prediction_json(mbta_stop_number);
+        String prediction_json = getMbtaPredictionJson(mbta_stop_number);
 
-        PredictionPack predictions = parse_prediction_string(prediction_json);
+        PredictionPack predictions = parsePredictionString(prediction_json);
         return predictions;
     }
 
 private:
-    String get_mbta_prediction_json(int stop)
+    String getMbtaPredictionJson(int stop)
     {
-
-        String mbta_query_url = get_query_url(stop);
-       HTTPClient http;
+        Serial.printf("Getting predictions for stop: %d \n", stop);
+        String mbta_query_url = getQueryUrl(stop);
+        HTTPClient http;
 
         Serial.print("[HTTP] begin...\n");
         http.begin(mbta_query_url, mbta_cert); //HTTP
@@ -67,7 +67,7 @@ private:
         String payload;
 
         // httpCode will be negative on error
-        if (http_success(httpCode))
+        if (httpSuccess(httpCode))
         {
             payload = http.getString();
         }
@@ -81,23 +81,23 @@ private:
         return payload;
     }
 
-    String get_query_url(int stop)
+    String getQueryUrl(int stop)
     {
         String mbta_query_url = "https://api-v3.mbta.com/predictions?filter[stop]=";
         mbta_query_url += stop;
         return mbta_query_url;
     }
 
-   bool http_success(int http_code)
-   {
+    bool httpSuccess(int http_code)
+    {
         // HTTP header has been send and Server response header has been handled
         Serial.printf("[HTTP] GET... code: %d\n", http_code);
         return http_code == HTTP_CODE_OK;
-   } 
+    } 
 
-    PredictionPack parse_prediction_string(String &payload)
+    PredictionPack parsePredictionString(String &payload)
     {
-        DynamicJsonDocument doc(6144);
+        DynamicJsonDocument doc(12288);
         Serial.println("allocated json");
 
         DeserializationError error = deserializeJson(doc, payload);
@@ -116,7 +116,7 @@ private:
 
         for (JsonObject elem : doc["data"].as<JsonArray>())
         {
-            prediction_pack.predictions[num_predictions] = parse_prediction_from_json(elem);
+            prediction_pack.predictions[num_predictions] = parsePredictionFromJson(elem);
 
             num_predictions++;
             Serial.printf("Adding prediction %d \n", num_predictions);
@@ -125,7 +125,7 @@ private:
         return prediction_pack;
     }
 
-    StopPrediction parse_prediction_from_json(JsonObject elem)
+    StopPrediction parsePredictionFromJson(JsonObject elem)
     {
         JsonObject attributes = elem["attributes"];
         const char *arrival_time = attributes["arrival_time"]; // "2021-03-07T09:30:51-05:00",
@@ -135,6 +135,13 @@ private:
         const char *stop_id = relationships["stop"]["data"]["id"];    // "2579",
         // const char *trip_id = relationships["trip"]["data"]["id"];
         auto prediction = StopPrediction(route_num, stop_id, arrival_time);
+        addViaToRoute(prediction, route_num);
+        return prediction;
+    }
+
+    // Adds a "via" string to the prediction based upon the route number.
+    void addViaToRoute(StopPrediction &prediction, const char* route_num)
+    {
         if (strcmp(route_num, "88") == 0)
         {
             prediction.set_via("Highlnd");
@@ -143,6 +150,6 @@ private:
         {
             prediction.set_via("Elm");
         }
-        return prediction;
+ 
     }
 };

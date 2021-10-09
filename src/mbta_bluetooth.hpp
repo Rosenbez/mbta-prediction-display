@@ -24,7 +24,6 @@ public:
         Serial.println("writing new ssid to storage");
         auto newSSID = pCharacteristic->getValue();
         store->storeSSID(newSSID.c_str());
-        wifiChanged = true;
     }
 
 };
@@ -37,6 +36,17 @@ public:
     {
         Serial.println("writing new pass to storage");
         store->storePass(pCharacteristic->getValue().c_str());
+    }
+};
+
+class MbtaStopCallback : public wifiStoreCallback
+{
+public:
+    MbtaStopCallback(WifiCredentialStore *store) : wifiStoreCallback(store) {}
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+        Serial.println("writing new pass to storage");
+        store->storeStop(atoi(pCharacteristic->getValue().c_str()));
     }
 };
 
@@ -55,7 +65,7 @@ public:
         auto creds = store.getCredentials();
         makeSSIDCharacteristic(creds.ssid);
         makePassCharacteristic(creds.pass);
-
+        makeStopCharacteristic(creds.mbtaStop);
     }
 
     void startServer()
@@ -107,4 +117,19 @@ private:
         pPassCharacteristic->setCallbacks(new PassCallback(&store));
 
     }
+
+    void makeStopCharacteristic(int initialStop)
+    {
+        pPassCharacteristic = pService->createCharacteristic(
+            "bebls03e-36e1-4688-b7f5-ea07361b26a8",
+            BLECharacteristic::PROPERTY_READ |
+                BLECharacteristic::PROPERTY_WRITE);
+        Serial.println("created service");
+        String stop;
+        stop.concat(initialStop);
+        pPassCharacteristic->setValue(stop.c_str());
+        pPassCharacteristic->setCallbacks(new MbtaStopCallback(&store));
+
+    }
+
 };
