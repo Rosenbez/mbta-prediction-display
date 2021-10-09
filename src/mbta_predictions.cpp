@@ -160,8 +160,8 @@ void write_predictions_to_display(PredictionPack prediction_pack)
     float batt = get_battery_percentage();
     mbta_display.WriteBanner(batt);
 
-    mbta_display.write_predictions(prediction_pack.predictions, prediction_pack.num_predictions);
-    mbta_display.display_data();
+    mbta_display.writePredictions(prediction_pack.predictions, prediction_pack.num_predictions);
+    mbta_display.displayData();
 }
 
 void run_bluetooth_mode()
@@ -171,8 +171,8 @@ void run_bluetooth_mode()
     disp.PrepDisplay();
     float batt = get_battery_percentage();
     disp.WriteBanner(batt);
-    disp.write_bt_screen();
-    disp.display_data();
+    disp.writeBleScreen();
+    disp.displayData();
     delay(2000);
     testBLE();
 
@@ -192,6 +192,7 @@ void setup()
 
     auto wifistore = WifiCredentialStore();
     //wifistore.storeCredentials(networkName, networkPswd);
+    //wifistore.storeStop(2579);
 
     bool button_c = get_button_c_pressed();
     if (button_c)
@@ -209,7 +210,7 @@ void setup()
 
     MbtaApi mbta = MbtaApi();
     
-    auto prediction_pack = mbta.get_predictions(2579);
+    auto prediction_pack = mbta.getPredictions(creds.mbtaStop);
 
     write_predictions_to_display(prediction_pack);
 

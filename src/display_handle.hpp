@@ -31,7 +31,7 @@ public:
     void WriteBanner(float battery_voltage)
     {
         char batt_str[30];
-        create_battery_string(batt_str, battery_voltage);
+        createBatteryString(batt_str, battery_voltage);
         display->print(batt_str);
         display->setCursor(150, 1);
         display->print(time_info, "%B %d %Y %H:%M");
@@ -39,7 +39,7 @@ public:
     }
 
     // Write an array of predictions to the screen
-    void write_predictions(StopPrediction predictions[], int num_predictions)
+    void writePredictions(StopPrediction predictions[], int num_predictions)
     {
         display->setTextSize(2);
         int line_number = 0;
@@ -52,12 +52,12 @@ public:
             //Serial.printf("On print object %d \n", s);
             if (arriving_in < 0) continue;
             if (line_number > 6) break;
-            write_single_prediction(pred, arriving_in);
+            writeSinglePrediction(pred, arriving_in);
            line_number++;
         }
     }
 
-    void write_bt_screen()
+    void writeBleScreen()
     {
         setCursor(2);
         display->setTextSize(2);
@@ -65,7 +65,7 @@ public:
     }
 
     // Display current data in the buffer to the screen.
-    void display_data()
+    void displayData()
     {
         display->display();
     }
@@ -77,7 +77,7 @@ public:
         //Serial.printf("set curser to y: %d \n", cursor_pos_y);
     }
 
-    void write_line(char* line)
+    void writeLine(char* line)
     {
         display->print(line);
     }
@@ -86,14 +86,14 @@ private:
     ThinkInk_290_Grayscale4_T5 *display;
     tm* time_info;
 
-    void create_battery_string(char *fill_batt, float battery_pct)
+    void createBatteryString(char *fill_batt, float battery_pct)
     {
         sprintf(fill_batt, "Batt Voltage: %2.0f %%", battery_pct);
         Serial.println();
     }
 
         // Write a prediction line at the current cursor position.
-    void write_single_prediction(StopPrediction pred, int arriving_in)
+    void writeSinglePrediction(StopPrediction pred, int arriving_in)
     {
         if (pred.hasVia())
         {
