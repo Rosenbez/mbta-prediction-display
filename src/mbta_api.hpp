@@ -57,7 +57,7 @@ private:
     {
         Serial.printf("Getting predictions for stop: %d \n", stop);
         String mbta_query_url = getQueryUrl(stop);
-       HTTPClient http;
+        HTTPClient http;
 
         Serial.print("[HTTP] begin...\n");
         http.begin(mbta_query_url, mbta_cert); //HTTP
@@ -135,6 +135,12 @@ private:
         const char *stop_id = relationships["stop"]["data"]["id"];    // "2579",
         // const char *trip_id = relationships["trip"]["data"]["id"];
         auto prediction = StopPrediction(route_num, stop_id, arrival_time);
+        addViaToRoute(prediction, route_num);
+        return prediction;
+    }
+
+    void addViaToRoute(StopPrediction &prediction, const char* route_num)
+    {
         if (strcmp(route_num, "88") == 0)
         {
             prediction.set_via("Highlnd");
@@ -143,6 +149,6 @@ private:
         {
             prediction.set_via("Elm");
         }
-        return prediction;
+ 
     }
 };
